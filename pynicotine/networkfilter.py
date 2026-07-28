@@ -1,25 +1,20 @@
 # SPDX-FileCopyrightText: 2020-2026 Nicotine+ Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import os
-
-from bisect import bisect_left
-from socket import inet_aton
-from struct import Struct
-from sys import intern
+from ipaddress import AddressValueError, IPv6Address
 
 from pynicotine.config import config
 from pynicotine.core import core
 from pynicotine.events import events
 
-UINT32_UNPACK = Struct(">I").unpack_from
+IP_ADDRESS_GROUPS = 8
+IP_GROUP_LENGTH = 4
 
 
 class NetworkFilter:
     """Functions related to banning and ignoring users."""
 
-    __slots__ = ("_banned_users", "_ignored_users", "_ip_ban_requested", "_ip_ignore_requested",
-                 "_ip_range_values", "_ip_range_countries", "_loaded_ip_country_data")
+    __slots__ = ("_banned_users", "_ignored_users", "_ip_ban_requested", "_ip_ignore_requested")
 
     COUNTRIES = {
         "AD": _("Andorra"),
@@ -280,9 +275,6 @@ class NetworkFilter:
         self._ignored_users = set()
         self._ip_ban_requested = {}
         self._ip_ignore_requested = {}
-        self._ip_range_values = ()
-        self._ip_range_countries = ()
-        self._loaded_ip_country_data = False
 
         for event_name, callback in (
             ("peer-address", self._get_peer_address),
@@ -302,29 +294,6 @@ class NetworkFilter:
                 if isinstance(username, str):
                     target_set.add(username)
 
-    def _populate_ip_country_data(self):
-
-        if self._loaded_ip_country_data:
-            return
-
-        data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "external", "data")
-
-        with open(os.path.join(data_path, "ip_country_data.csv"), "r", encoding="utf-8") as file_handle:
-            for line in file_handle:
-                line = line.strip()
-
-                if not line or line.startswith("#"):
-                    continue
-
-                if self._ip_range_values:
-                    # String interning to reduce memory usage of duplicate strings
-                    self._ip_range_countries = tuple(intern(x) for x in line.split(","))
-                    break
-
-                self._ip_range_values = tuple(int(x) for x in line.split(","))
-
-        self._loaded_ip_country_data = True
-
     def _server_disconnect(self, _msg):
         self._ip_ban_requested.clear()
         self._ip_ignore_requested.clear()
@@ -333,9 +302,6 @@ class NetworkFilter:
 
         self._banned_users.clear()
         self._ignored_users.clear()
-        self._ip_range_values = ()
-        self._ip_range_countries = ()
-        self._loaded_ip_country_data = False
 
     # IP Filter List Management #
 
@@ -447,40 +413,65 @@ class NetworkFilter:
 
         return None
 
-    def get_country_code(self, ip_address):
-
-        if not self._loaded_ip_country_data:
-            self._populate_ip_country_data()
-
-        if not self._ip_range_countries:
-            return ""
-
-        ip_num, = UINT32_UNPACK(inet_aton(ip_address))
-        ip_index = bisect_left(self._ip_range_values, ip_num)
-        country_code = self._ip_range_countries[ip_index]
-
-        return country_code
+    @staticmethod
+    def get_country_code(_ip_address):
+        # No IPv6 country database is bundled
+        return ""
 
     @staticmethod
-    def is_ip_address(ip_address, allow_zero=True, allow_wildcard=True):
-        """Check if the given value is an IPv4 address or not."""
+    def expand_ip_address(ip_address):
+        """Returns an IPv6 address as a list of zero-padded groups, leaving
+        any wildcard group untouched."""
 
-        if not ip_address or ip_address is None or ip_address.count(".") != 3:
+        if "*" not in ip_address:
+            return IPv6Address(ip_address).exploded.split(":")
+
+        return [group if group == "*" else group.rjust(IP_GROUP_LENGTH, "0")
+                for group in ip_address.split(":")]
+
+    @classmethod
+    def is_ip_address(cls, ip_address, allow_zero=True, allow_wildcard=True):
+        """Check if the given value is an IPv6 address or not."""
+
+        if not ip_address:
             return False
 
-        if not allow_zero and ip_address == "0.0.0.0":
-            # User is offline if ip_address "0.0.0.0" (not None!)
+        if not allow_zero and ip_address == "::":
+            # User is offline if ip_address "::" (not None!)
             return False
 
-        for part in ip_address.split("."):
-            if allow_wildcard and part == "*":
-                continue
-
-            if not part.isdigit():
+        if "*" in ip_address:
+            if not allow_wildcard:
                 return False
 
-            if int(part) > 255:
+            # Wildcard rules cannot be compressed, since the number of groups
+            # a "::" stands in for is unknown
+            groups = ip_address.split(":")
+
+            if len(groups) != IP_ADDRESS_GROUPS:
                 return False
+
+            return all(group == "*" or cls._is_ip_group(group) for group in groups)
+
+        try:
+            IPv6Address(ip_address)
+
+        except AddressValueError:
+            return False
+
+        return True
+
+    @staticmethod
+    def _is_ip_group(group):
+
+        if not 0 < len(group) <= IP_GROUP_LENGTH:
+            return False
+
+        try:
+            int(group, 16)
+
+        except ValueError:
+            return False
 
         return True
 
@@ -506,7 +497,7 @@ class NetworkFilter:
             # IP filtered
             return True
 
-        s_address = ip_address.split(".")
+        s_address = self.expand_ip_address(ip_address)
 
         for address in ip_list:
             if "*" not in address:
@@ -514,7 +505,7 @@ class NetworkFilter:
                 continue
 
             # Wildcard in IP rule
-            parts = address.split(".")
+            parts = self.expand_ip_address(address)
             seg = 0
 
             for part in parts:
@@ -525,7 +516,7 @@ class NetworkFilter:
                 seg += 1
 
                 # Last time around
-                if seg == 4:
+                if seg == IP_ADDRESS_GROUPS:
                     # Wildcard filter, add actual IP address and username into list
                     self._add_user_ip_to_list(ip_list, username, ip_address)
                     return True
@@ -558,7 +549,7 @@ class NetworkFilter:
         username = msg.user
         ip_address = msg.ip_address
 
-        if ip_address == "0.0.0.0":
+        if ip_address == "::":
             # User is offline
             return
 

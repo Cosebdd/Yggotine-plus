@@ -33,7 +33,6 @@ if TYPE_CHECKING:
     from pynicotine.nowplaying import NowPlaying
     from pynicotine.pluginsystem import PluginHandler
     from pynicotine.portchecker import PortChecker
-    from pynicotine.portmapper import PortMapper
     from pynicotine.privatechat import PrivateChat
     from pynicotine.search import Search
     from pynicotine.shares import Shares
@@ -54,7 +53,7 @@ class Core:
 
     __slots__ = ("shares", "users", "network_filter", "statistics", "search", "downloads",
                  "uploads", "interests", "userbrowse", "userinfo", "buddies", "privatechat",
-                 "chatrooms", "pluginhandler", "now_playing", "portmapper", "notifications",
+                 "chatrooms", "pluginhandler", "now_playing", "notifications",
                  "port_checker", "update_checker", "_network_thread", "cli_interface_address",
                  "cli_listen_port", "cli_rescanning", "enabled_components")
 
@@ -74,7 +73,6 @@ class Core:
         self.chatrooms: ChatRooms | None = None
         self.pluginhandler: PluginHandler | None = None
         self.now_playing: NowPlaying | None = None
-        self.portmapper: PortMapper | None = None
         self.notifications: Notifications | None = None
         self.port_checker: PortChecker | None = None
         self.update_checker: UpdateChecker | None = None
@@ -92,7 +90,7 @@ class Core:
         # Enable all components by default
         if enabled_components is None:
             enabled_components = {
-                "error_handler", "signal_handler", "cli", "portmapper", "network_thread", "shares", "users",
+                "error_handler", "signal_handler", "cli", "network_thread", "shares", "users",
                 "notifications", "network_filter", "now_playing", "statistics", "port_checker", "update_checker",
                 "search", "downloads", "uploads", "interests", "userbrowse", "userinfo", "buddies",
                 "chatrooms", "privatechat", "pluginhandler"
@@ -118,10 +116,6 @@ class Core:
             ("server-reconnect", self._server_reconnect)
         ):
             events.connect(event_name, callback)
-
-        if not isolated_mode and "portmapper" in enabled_components:
-            from pynicotine.portmapper import PortMapper
-            self.portmapper = PortMapper()
 
         if "network_thread" in enabled_components:
             from pynicotine.slskproto import NetworkThread
@@ -284,8 +278,7 @@ class Core:
             login=(config.sections["server"]["login"], config.sections["server"]["passw"]),
             interface_name=config.sections["server"]["interface"],
             interface_address=self.cli_interface_address,
-            listen_port=self.cli_listen_port or config.sections["server"]["portrange"][0],
-            portmapper=self.portmapper
+            listen_port=self.cli_listen_port or config.sections["server"]["portrange"][0]
         ))
 
     def disconnect(self):

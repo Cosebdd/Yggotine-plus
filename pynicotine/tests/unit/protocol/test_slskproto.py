@@ -71,7 +71,6 @@ class SoulseekNetworkTest(TestCase):
 
         core.init_components(enabled_components={"network_thread"})
 
-        config.sections["server"]["upnp"] = False
         core.start()
         events.emit("enable-message-queue")
 
@@ -101,19 +100,21 @@ class SoulseekNetworkTest(TestCase):
         # pylint: disable=no-member,protected-access
         sock = core._network_thread._server_conn.sock
 
+        # socket.socket is mocked, so the listening socket shares this mock and
+        # its IPV6_V6ONLY call is counted here too
         if hasattr(socket, "TCP_KEEPIDLE") or hasattr(socket, "TCP_KEEPALIVE"):
             if sys.platform == "win32":
-                self.assertEqual(sock.setsockopt.call_count, 6)
+                self.assertEqual(sock.setsockopt.call_count, 7)
 
             elif hasattr(socket, "TCP_USER_TIMEOUT"):
-                self.assertEqual(sock.setsockopt.call_count, 8)
+                self.assertEqual(sock.setsockopt.call_count, 9)
 
             else:
-                self.assertEqual(sock.setsockopt.call_count, 7)
+                self.assertEqual(sock.setsockopt.call_count, 8)
 
         elif hasattr(socket, "SIO_KEEPALIVE_VALS"):
             self.assertEqual(sock.ioctl.call_count, 1)
-            self.assertEqual(sock.setsockopt.call_count, 3)
+            self.assertEqual(sock.setsockopt.call_count, 4)
 
         self.assertEqual(sock.setblocking.call_count, 2)
         self.assertEqual(sock.connect_ex.call_count, 1)

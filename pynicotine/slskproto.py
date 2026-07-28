@@ -9,7 +9,6 @@ import errno
 import random
 import selectors
 import socket
-import struct
 import sys
 import time
 
@@ -135,12 +134,13 @@ class ConnectionInitClosedError(Exception):
 
 class NetworkInterfaces:
 
-    IP_BIND_ADDRESS_NO_PORT = SO_BINDTODEVICE = None
+    IP_BIND_ADDRESS_NO_PORT = SO_BINDTODEVICE = PROC_IF_INET6 = None
+    SCOPE_GLOBAL = "00"
 
     if sys.platform == "win32":
         from ctypes import POINTER, Structure, wintypes
 
-        AF_INET = 2
+        AF_INET6 = 23
 
         GAA_FLAG_SKIP_ANYCAST = 2
         GAA_FLAG_SKIP_MULTICAST = 4
@@ -148,7 +148,7 @@ class NetworkInterfaces:
 
         ERROR_BUFFER_OVERFLOW = 111
 
-        class SockaddrIn(Structure):
+        class SockaddrIn6(Structure):
             pass
 
         class SocketAddress(Structure):
@@ -160,15 +160,16 @@ class NetworkInterfaces:
         class IpAdapterAddresses(Structure):
             pass
 
-        SockaddrIn._fields_ = [  # pylint: disable=protected-access
-            ("sin_family", wintypes.USHORT),
-            ("sin_port", wintypes.USHORT),
-            ("sin_addr", wintypes.BYTE * 4),
-            ("sin_zero", wintypes.CHAR * 8)
+        SockaddrIn6._fields_ = [  # pylint: disable=protected-access
+            ("sin6_family", wintypes.USHORT),
+            ("sin6_port", wintypes.USHORT),
+            ("sin6_flowinfo", wintypes.ULONG),
+            ("sin6_addr", wintypes.BYTE * 16),
+            ("sin6_scope_id", wintypes.ULONG)
         ]
 
         SocketAddress._fields_ = [  # pylint: disable=protected-access
-            ("lp_sockaddr", POINTER(SockaddrIn)),
+            ("lp_sockaddr", POINTER(SockaddrIn6)),
             ("i_sockaddr_length", wintypes.INT)
         ]
 
@@ -195,17 +196,8 @@ class NetworkInterfaces:
 
     elif sys.platform == "linux":
         IP_BIND_ADDRESS_NO_PORT = 24
-        SIOCGIFADDR = 0x8915
         SO_BINDTODEVICE = 25
-
-    elif sys.platform.startswith("sunos"):
-        SIOCGIFADDR = -0x3fdf96f3  # Solaris
-
-    elif sys.platform.startswith("haiku"):
-        SIOCGIFADDR = 0x22c7
-
-    else:
-        SIOCGIFADDR = 0xc0206921   # macOS, *BSD
+        PROC_IF_INET6 = "/proc/net/if_inet6"
 
     @classmethod
     def _get_interface_addresses_win32(cls):
@@ -228,7 +220,7 @@ class NetworkInterfaces:
                 create_string_buffer(adapter_addresses_size.value), POINTER(cls.IpAdapterAddresses)
             )
             return_value = windll.Iphlpapi.GetAdaptersAddresses(
-                cls.AF_INET,
+                cls.AF_INET6,
                 (cls.GAA_FLAG_SKIP_ANYCAST | cls.GAA_FLAG_SKIP_MULTICAST | cls.GAA_FLAG_SKIP_DNS_SERVER),
                 None,
                 p_adapter_addresses,
@@ -245,7 +237,8 @@ class NetworkInterfaces:
             if adapter_addresses.first_unicast_address:
                 interface_name = adapter_addresses.friendly_name
                 socket_address = adapter_addresses.first_unicast_address[0].address
-                interface_addresses[interface_name] = socket.inet_ntoa(socket_address.lp_sockaddr[0].sin_addr)
+                interface_addresses[interface_name] = socket.inet_ntop(
+                    socket.AF_INET6, socket_address.lp_sockaddr[0].sin6_addr)
 
             p_adapter_addresses = adapter_addresses.next
 
@@ -258,28 +251,23 @@ class NetworkInterfaces:
 
         interface_addresses = {}
 
-        try:
-            interface_name_index = socket.if_nameindex()
-
-        except (AttributeError, OSError) as error:
-            log.add_debug("Failed to get list of network interfaces: %s", error)
+        if cls.PROC_IF_INET6 is None:
+            log.add_debug("Listing network interface addresses is not supported on this platform")
             return interface_addresses
 
-        for _i, interface_name in interface_name_index:
-            try:
-                import fcntl
+        try:
+            with open(cls.PROC_IF_INET6, encoding="utf-8") as file_handle:
+                for line in file_handle:
+                    address, _index, _prefix_length, scope, _flags, interface_name = line.split()
 
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                    ip_interface = fcntl.ioctl(sock.fileno(),
-                                               cls.SIOCGIFADDR,
-                                               struct.pack("256s", interface_name.encode()))
+                    if scope != cls.SCOPE_GLOBAL:
+                        continue
 
-                    ip_address = socket.inet_ntoa(ip_interface[20:24])
-                    interface_addresses[interface_name] = ip_address
+                    interface_addresses[interface_name] = socket.inet_ntop(
+                        socket.AF_INET6, bytes.fromhex(address))
 
-            except (ImportError, OSError) as error:
-                log.add_debug("Failed to get IP address for network interface %s: %s", (interface_name, error))
-                continue
+        except (OSError, ValueError) as error:
+            log.add_debug("Failed to get list of network interfaces: %s", error)
 
         return interface_addresses
 
@@ -402,7 +390,6 @@ class NetworkThread(Thread):
         self._listen_port = None
         self._interface_name = None
         self._interface_address = None
-        self._portmapper = None
         self._local_ip_address = ""
 
         self._server_conn = None
@@ -503,7 +490,8 @@ class NetworkThread(Thread):
 
     def _create_listen_socket(self):
 
-        self._listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._listen_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        self._listen_socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
         self._listen_socket.setblocking(False)
         self._num_sockets += 1
 
@@ -659,11 +647,11 @@ class NetworkThread(Thread):
     def _find_local_ip_address(self):
 
         # Create a UDP socket
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as local_socket:
+        with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as local_socket:
 
-            # Send a broadcast packet on a local address (doesn't need to be reachable,
+            # Send a packet to a documentation address (doesn't need to be reachable,
             # but MacOS requires port to be non-zero)
-            local_socket.connect_ex(("10.255.255.255", 1))
+            local_socket.connect_ex(("2001:db8::1", 1))
 
             # This returns the "primary" IP on the local box, even if that IP is a NAT/private/internal IP
             ip_address = local_socket.getsockname()[0]
@@ -1260,8 +1248,6 @@ class NetworkThread(Thread):
             events.emit_main_thread("set-connection-stats")  # Reset connection stats
             return
 
-        self._portmapper = msg.portmapper
-
         self._manual_server_disconnect = False
         self._manual_server_reconnect = False
         self._server_timeout_time = None
@@ -1273,7 +1259,7 @@ class NetworkThread(Thread):
 
     def _init_server_conn(self, msg):
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         io_events = selectors.EVENT_READ | selectors.EVENT_WRITE
         conn = ServerConnection(
             sock=sock, addr=msg.addr, io_events=io_events, login=msg.login
@@ -1382,14 +1368,8 @@ class NetworkThread(Thread):
 
         elif msg_class is Login:
             if msg.success:
-                # Ensure listening port is open
                 user_address = self._user_addresses[self._server_username]
                 msg.local_address = user_address.addr
-                local_ip_address, port = msg.local_address
-
-                if self._portmapper is not None:
-                    self._portmapper.set_port(port, local_ip_address)
-                    self._portmapper.add_port_mapping(blocking=True)
 
                 msg.username = self._server_username
                 msg.server_address = self._server_address
@@ -1589,11 +1569,6 @@ class NetworkThread(Thread):
         self._local_ip_address = ""
 
         self._close_listen_socket()
-
-        if self._portmapper is not None:
-            self._portmapper.remove_port_mapping(blocking=True)
-            self._portmapper.set_port(port=None, local_ip_address=None)
-            self._portmapper = None
 
         self._parent = None
         self._potential_parents.clear()
@@ -1819,8 +1794,9 @@ class NetworkThread(Thread):
 
             io_events = selectors.EVENT_READ
 
+            # IPv6 sockets report addresses as (host, port, flowinfo, scope_id)
             conn = self._conns[incoming_sock] = PeerConnection(
-                sock=incoming_sock, addr=incoming_addr, io_events=io_events
+                sock=incoming_sock, addr=incoming_addr[:2], io_events=io_events
             )
             self._num_sockets += 1
 
@@ -1862,7 +1838,7 @@ class NetworkThread(Thread):
         log.add_conn("Attempting direct connection of type %s to user %s, address %s",
                      (init.conn_type, init.target_user, addr))
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         io_events = selectors.EVENT_READ | selectors.EVENT_WRITE
         conn = PeerConnection(
             sock=sock, addr=addr, io_events=io_events, init=init, pierce_token=pierce_token

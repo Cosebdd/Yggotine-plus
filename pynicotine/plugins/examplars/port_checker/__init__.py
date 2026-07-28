@@ -71,13 +71,13 @@ class Plugin(BasePlugin):
 
     def _check_port(self, ip_address, port):
 
-        if ip_address == "0.0.0.0" or not port:
+        if ip_address == "::" or not port:
             return "unknown"
 
         timeout = self.settings["socket_timeout"]
         self.log("Scanning %s:%d (socket timeout %d seconds)…", (ip_address, port, timeout))
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         sock.settimeout(timeout)
 
         result = sock.connect_ex((ip_address, port))

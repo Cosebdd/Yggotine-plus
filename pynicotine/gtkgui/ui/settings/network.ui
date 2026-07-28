@@ -221,30 +221,6 @@
             <property name="visible">True</property>
             <child>
               <object class="GtkLabel">
-                <property name="height-request">24</property>
-                <property name="hexpand">True</property>
-                <property name="label" translatable="yes">Automatically forward listening port (UPnP/NAT-PMP)</property>
-                <property name="mnemonic-widget">upnp_toggle</property>
-                <property name="visible">True</property>
-                <property name="wrap">True</property>
-                <property name="wrap-mode">word-char</property>
-                <property name="xalign">0</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkSwitch" id="upnp_toggle">
-                <property name="valign">center</property>
-                <property name="visible">True</property>
-              </object>
-            </child>
-          </object>
-        </child>
-        <child>
-          <object class="GtkBox">
-            <property name="spacing">12</property>
-            <property name="visible">True</property>
-            <child>
-              <object class="GtkLabel">
                 <property name="hexpand">True</property>
                 <property name="label" translatable="yes">Public IP address:</property>
                 <property name="mnemonic-widget">current_port_label</property>

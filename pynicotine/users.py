@@ -274,7 +274,7 @@ class Users:
         username = msg.user
         notify = self._ip_requested.pop(username, None)
         ip_address = msg.ip_address
-        user_offline = (ip_address == "0.0.0.0")
+        user_offline = (ip_address == "::")
         country_code = core.network_filter.get_country_code(ip_address)
 
         if user_offline:

@@ -78,7 +78,6 @@ class NetworkPage:
             self.network_interface_label,
             self.password_row_revealer,
             self.soulseek_server_entry,
-            self.upnp_toggle,
             self.username_label
         ) = self.widgets = ui.load(scope=self, path="settings/network.ui")
 
@@ -109,7 +108,6 @@ class NetworkPage:
                 "autoaway": self.auto_away_spinner,
                 "autoreply": self.auto_reply_message_entry,
                 "interface": self.network_interface_combobox,
-                "upnp": self.upnp_toggle,
                 "auto_connect_startup": self.auto_connect_startup_toggle
             }
         }
@@ -168,7 +166,6 @@ class NetworkPage:
         self.network_interface_combobox.unfreeze()
 
         self.application.preferences.set_widgets_data(self.options)
-        self.upnp_toggle.get_parent().set_visible(not self.application.isolated_mode)
 
         # Listening port status
         self.update_port()
@@ -177,8 +174,8 @@ class NetworkPage:
         self.set_username(core.users.login_username or config.sections["server"]["login"])
         self.password_row_revealer.set_reveal_child(core.users.login_status != UserStatus.OFFLINE)
 
-        server_hostname, server_port = config.sections["server"]["server"]
-        self.soulseek_server_entry.set_text(f"{server_hostname}:{server_port}")
+        self.soulseek_server_entry.set_text(
+            self.format_server_address(*config.sections["server"]["server"]))
 
         if core.cli_listen_port is not None:
             self.listen_port_label.set_label(str(core.cli_listen_port))
@@ -193,8 +190,7 @@ class NetworkPage:
     def get_settings(self):
 
         try:
-            server_address, server_port = self.soulseek_server_entry.get_text().split(":")
-            server_addr = (server_address.strip(), int(server_port.strip()))
+            server_addr = self.parse_server_address(self.soulseek_server_entry.get_text())
 
         except ValueError:
             server_addr = config.defaults["server"]["server"]
@@ -208,7 +204,6 @@ class NetworkPage:
                 "autoaway": self.auto_away_spinner.get_value_as_int(),
                 "autoreply": self.auto_reply_message_entry.get_text(),
                 "interface": self.network_interface_combobox.get_text(),
-                "upnp": self.upnp_toggle.get_active(),
                 "auto_connect_startup": self.auto_connect_startup_toggle.get_active()
             }
         }
@@ -289,8 +284,25 @@ class NetworkPage:
         ).present()
 
     def on_default_server(self, *_args):
-        server_address, server_port = config.defaults["server"]["server"]
-        self.soulseek_server_entry.set_text(f"{server_address}:{server_port}")
+        self.soulseek_server_entry.set_text(
+            self.format_server_address(*config.defaults["server"]["server"]))
+
+    @staticmethod
+    def format_server_address(hostname, port):
+        return f"[{hostname}]:{port}"
+
+    @staticmethod
+    def parse_server_address(text):
+        """Splits a bracketed "[host]:port" address. Brackets are required to
+        keep an IPv6 host separable from the port."""
+
+        hostname, _separator, port = text.strip().rpartition(":")
+        hostname = hostname.strip()
+
+        if not hostname.startswith("[") or not hostname.endswith("]"):
+            raise ValueError(f"Invalid server address '{text}'")
+
+        return hostname[1:-1], int(port)
 
 
 class DownloadsPage:
@@ -3883,12 +3895,6 @@ class Preferences(Dialog):
             if reconnect_required:
                 break
 
-        portmap_changed = self.has_option_changed(options, "server", "upnp")
-        portmap_required = None
-
-        if portmap_changed:
-            portmap_required = "add" if options["server"]["upnp"] else "remove"
-
         for section, key in (
             ("transfers", "shared"),
             ("transfers", "buddyshared"),
@@ -3946,7 +3952,6 @@ class Preferences(Dialog):
 
         return (
             reconnect_required,
-            portmap_required,
             rescan_required,
             rescan_daily_required,
             recompress_shares_required,
@@ -3968,7 +3973,6 @@ class Preferences(Dialog):
 
         (
             reconnect_required,
-            portmap_required,
             rescan_required,
             rescan_daily_required,
             recompress_shares_required,
@@ -4017,12 +4021,6 @@ class Preferences(Dialog):
 
         if reconnect_required:
             core.reconnect()
-
-        if portmap_required == "add":
-            core.portmapper.add_port_mapping()
-
-        elif portmap_required == "remove":
-            core.portmapper.remove_port_mapping()
 
         if user_profile_required:
             core.userinfo.show_user(refresh=True, switch_page=False)

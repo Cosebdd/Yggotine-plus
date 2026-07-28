@@ -15,8 +15,9 @@ except ImportError:
 
 from operator import itemgetter
 from random import randint
-from socket import inet_aton
-from socket import inet_ntoa
+from socket import AF_INET6
+from socket import inet_ntop
+from socket import inet_pton
 from struct import Struct
 
 from pynicotine.utils import UINT32_LIMIT
@@ -155,18 +156,16 @@ class CloseConnection(InternalMessage):
 class ServerConnect(InternalMessage):
     """Sent to the networking thread to establish a server connection."""
 
-    __slots__ = ("addr", "login", "interface_name", "interface_address", "listen_port",
-                 "portmapper")
+    __slots__ = ("addr", "login", "interface_name", "interface_address", "listen_port")
     __excluded_attrs__ = {"login"}
 
     def __init__(self, addr=None, login=None, interface_name=None, interface_address=None,
-                 listen_port=None, portmapper=None):
+                 listen_port=None):
         self.addr = addr
         self.login = login
         self.interface_name = interface_name
         self.interface_address = interface_address
         self.listen_port = listen_port
-        self.portmapper = portmapper
 
 
 class ServerDisconnect(InternalMessage):
@@ -325,6 +324,10 @@ class SlskMessage:
     def pack_uint64(content):
         return UINT64_PACK(content)
 
+    @staticmethod
+    def pack_ip(content):
+        return inet_pton(AF_INET6, content)
+
     def has_remaining_content(self):
         return bool(self._message[self._offset:])
 
@@ -360,8 +363,8 @@ class SlskMessage:
 
     def unpack_ip(self):
         start = self._offset
-        self._offset += 4
-        return inet_ntoa(self._message[start:self._offset].tobytes()[::-1])
+        self._offset += 16
+        return inet_ntop(AF_INET6, self._message[start:self._offset].tobytes())
 
     def unpack_uint8(self):
         result = self._message[self._offset]
@@ -1944,14 +1947,8 @@ class ParentIP(ServerMessage):
         ServerMessage.__init__(self)
         self.parentip = parentip
 
-    @staticmethod
-    def strunreverse(string):
-        strlist = string.split(".")
-        strlist.reverse()
-        return ".".join(strlist)
-
     def make_network_message(self):
-        return self.pack_uint32(inet_aton(self.strunreverse(self.parentip)))
+        return self.pack_ip(self.parentip)
 
 
 class ParentMinSpeed(ServerMessage):

@@ -155,7 +155,7 @@ class Config:
         )
         self.defaults = {
             "server": {
-                "server": ("server.slsknet.org", 2242),
+                "server": ("::1", 2242),
                 "login": "",
                 "passw": "",
                 "interface": "",
@@ -163,7 +163,6 @@ class Config:
                 "autosearch": [],
                 "autoreply": "",
                 "portrange": (2234, 2234),
-                "upnp": True,
                 "auto_connect_startup": True,
                 "userlist": [],
                 "banlist": [],
@@ -475,6 +474,7 @@ class Config:
                 "userencoding",
                 "firewalled",
                 "command_aliases",
+                "upnp",
                 "upnp_interval"
             ),
             "ui": (
