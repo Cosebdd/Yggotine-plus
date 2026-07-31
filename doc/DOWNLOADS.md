@@ -50,7 +50,7 @@ Packages listed below can be installed on different GNU/Linux distributions.
 
 | Format                                                                           | Package Name                 |
 |----------------------------------------------------------------------------------|------------------------------|
-| [Flatpak](https://flathub.org/apps/details/org.nicotine_plus.Nicotine)           | `org.nicotine_plus.Nicotine` |
+| [Flatpak](https://flathub.org/apps/details/org.yggotine_plus.Yggotine)           | `org.yggotine_plus.Yggotine` |
 | [Snap](https://snapcraft.io/nicotine-plus)                                       | `nicotine-plus`              |
 
 ### PPA (Ubuntu/Debian)

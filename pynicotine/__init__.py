@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2020-2026 Nicotine+ Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-__application_name__ = "Nicotine+"
-__application_id__ = "org.nicotine_plus.Nicotine"
+__application_name__ = "Yggotine+"
+__application_id__ = "org.yggotine_plus.Yggotine"
 __version__ = "3.4.0.dev1"
 __author__ = "Nicotine+ Team"
 __copyright__ = """© 2004–2026 Nicotine+ Contributors
@@ -31,7 +31,7 @@ def check_arguments():
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="nicotine", description=_("Graphical client for the Soulseek peer-to-peer network"),
+        prog="yggotine", description=_("Graphical client for the Soulseek peer-to-peer network"),
         epilog=_("Website: %s") % __website_url__, add_help=False
     )
 
@@ -185,7 +185,7 @@ def run():
     """Run application and return its exit code."""
 
     set_up_python()
-    rename_process(b"nicotine")
+    rename_process(b"yggotine")
 
     headless, hidden, ci_mode, isolated_mode, rescan, multi_instance = check_arguments()
     error = check_python_version()

@@ -303,7 +303,7 @@ should do when releasing a new version of Nicotine+.
     The following files need to be modified:
     - [NEWS.md](https://github.com/nicotine-plus/nicotine-plus/blob/HEAD/NEWS.md)
     - [README.md](https://github.com/nicotine-plus/nicotine-plus/blob/HEAD/README.md)
-    - [data/org.nicotine_plus.Nicotine.appdata.xml.in](https://github.com/nicotine-plus/nicotine-plus/blob/HEAD/data/org.nicotine_plus.Nicotine.appdata.xml.in)
+    - [data/org.yggotine_plus.Yggotine.appdata.xml.in](https://github.com/nicotine-plus/nicotine-plus/blob/HEAD/data/org.yggotine_plus.Yggotine.appdata.xml.in)
     - [debian/changelog](https://github.com/nicotine-plus/nicotine-plus/blob/HEAD/debian/changelog)
     - [pynicotine/\_\_init\_\_.py](https://github.com/nicotine-plus/nicotine-plus/blob/HEAD/pynicotine/__init__.py)
 
@@ -327,6 +327,6 @@ should do when releasing a new version of Nicotine+.
     tagged on GitHub. Then, generate stable builds by pressing
     `Request build(s)`.
 
- 10. Create a new release on [Flathub](https://github.com/flathub/org.nicotine_plus.Nicotine).
+ 10. Create a new release on [Flathub](https://github.com/flathub/org.yggotine_plus.Yggotine).
 
  11. Create a new release on the [Snap Store](https://snapcraft.io/nicotine-plus).

@@ -90,10 +90,10 @@ jobs:
           persist-credentials: false
 
       - name: Validate manifest
-        run: flatpak-builder-lint --exceptions manifest build-aux/flatpak/org.nicotine_plus.Nicotine.json
+        run: flatpak-builder-lint --exceptions manifest build-aux/flatpak/org.yggotine_plus.Yggotine.json
 
       - name: Validate appstream
-        run: flatpak-builder-lint appstream data/org.nicotine_plus.Nicotine.appdata.xml.in
+        run: flatpak-builder-lint appstream data/org.yggotine_plus.Yggotine.appdata.xml.in
 
       - name: Build Flatpak package
         run: |
@@ -102,18 +102,18 @@ jobs:
             --disable-download \
             --disable-rofiles-fuse \
             --force-clean \
-            flatpak_app build-aux/flatpak/org.nicotine_plus.Nicotine.json
+            flatpak_app build-aux/flatpak/org.yggotine_plus.Yggotine.json
 
           flatpak build-bundle repo \
-            org.nicotine_plus.Nicotine-${{ matrix.arch }}.flatpak \
+            org.yggotine_plus.Yggotine-${{ matrix.arch }}.flatpak \
             --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \
-            org.nicotine_plus.Nicotine
+            org.yggotine_plus.Yggotine
 
       - name: Archive artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: flatpak-${{ matrix.arch }}-package
-          path: org.nicotine_plus.Nicotine-${{ matrix.arch }}.flatpak
+          path: org.yggotine_plus.Yggotine-${{ matrix.arch }}.flatpak
 
   snap:
     timeout-minutes: 15

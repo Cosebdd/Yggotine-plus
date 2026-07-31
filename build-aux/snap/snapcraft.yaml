@@ -17,9 +17,9 @@ plugs:
 
 apps:
   nicotine-plus:
-    command: bin/nicotine
-    common-id: org.nicotine_plus.Nicotine
-    desktop: share/applications/org.nicotine_plus.Nicotine.desktop
+    command: bin/yggotine
+    common-id: org.yggotine_plus.Yggotine
+    desktop: share/applications/org.yggotine_plus.Yggotine.desktop
     extensions: [gnome]
     plugs:
       - desktop-legacy
@@ -34,10 +34,10 @@ parts:
     plugin: python
     source: .
     python-packages: []
-    parse-info: [share/metainfo/org.nicotine_plus.Nicotine.appdata.xml]
+    parse-info: [share/metainfo/org.yggotine_plus.Yggotine.appdata.xml]
     override-pull: |
       craftctl default
-      sed -E 's|Icon=.*|Icon=snap.$CRAFT_PROJECT_NAME.org.nicotine_plus.Nicotine|' -i data/org.nicotine_plus.Nicotine.desktop.in
+      sed -E 's|Icon=.*|Icon=snap.$CRAFT_PROJECT_NAME.org.yggotine_plus.Yggotine|' -i data/org.yggotine_plus.Yggotine.desktop.in
     override-build: |
       craftctl default
       mkdir -p $CRAFT_PART_INSTALL/meta/gui/
@@ -50,4 +50,4 @@ slots:
   nicotine-plus:
     interface: dbus
     bus: session
-    name: org.nicotine_plus.Nicotine
+    name: org.yggotine_plus.Yggotine
