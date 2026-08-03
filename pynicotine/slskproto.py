@@ -47,6 +47,7 @@ from pynicotine.slskmessages import EmitNetworkMessageEvents
 from pynicotine.slskmessages import FileOffset
 from pynicotine.slskmessages import FileSearchResponse
 from pynicotine.slskmessages import FileTransferInit
+from pynicotine.slskmessages import FolderContentsResponse
 from pynicotine.slskmessages import GetPeerAddress
 from pynicotine.slskmessages import GetUserStats
 from pynicotine.slskmessages import GetUserStatus
@@ -331,9 +332,10 @@ class NetworkThread(Thread):
     CONNECTION_MAX_IDLE_GHOST = 10
     USER_ADDRESS_TTL = 1800                      # 30 minutes
     CONNECTION_BACKLOG_LENGTH = 65535            # OS limit can be lower
-    MAX_INCOMING_MESSAGE_SIZE_LARGE = 469762048  # 448 MiB, to leave headroom for large shares
-    MAX_INCOMING_MESSAGE_SIZE_MEDIUM = 16777216  # 16 MiB
-    MAX_INCOMING_MESSAGE_SIZE_SMALL = 16384      # 16 KiB
+    MAX_INCOMING_MESSAGE_SIZE_448M = 469762048   # 448 MiB, to leave headroom for large shares
+    MAX_INCOMING_MESSAGE_SIZE_16M = 16777216     # 16 MiB
+    MAX_INCOMING_MESSAGE_SIZE_1M = 1048576       # 1 MiB
+    MAX_INCOMING_MESSAGE_SIZE_16K = 16384        # 16 KiB
     TCP_BUFFER_SIZE_MEDIUM = 208896              # 204 KiB, maximum limit NetBSD accepts by default
     TCP_BUFFER_SIZE_SMALL = 16384                # 16 KiB
     ALLOWED_PEER_CONN_TYPES = {
@@ -589,7 +591,7 @@ class NetworkThread(Thread):
         # No direct connection was established, give up
         events.emit_main_thread(
             "peer-connection-error", username=username, conn_type=conn_type,
-            msgs=init.outgoing_msgs[:]
+            msgs=init.outgoing_msgs[:], is_offline=False
         )
         init.outgoing_msgs.clear()
         self._username_init_msgs.pop(username + conn_type, None)
@@ -1079,7 +1081,9 @@ class NetworkThread(Thread):
 
         event_name = "peer-connection-closed" if conn.is_established else "peer-connection-error"
         events.emit_main_thread(
-            event_name, username=username, conn_type=conn_type, msgs=init.outgoing_msgs[:])
+            event_name, username=username, conn_type=conn_type, msgs=init.outgoing_msgs[:],
+            is_offline=(self._server_conn is None)
+        )
 
         del self._username_init_msgs[init_key]
 
@@ -1150,7 +1154,7 @@ class NetworkThread(Thread):
             inactive_conns.clear()
 
         if init_timeout_conns:
-            conn_error = ConnectionInitTimeoutError("Connection attempt timed out")
+            conn_error = ConnectionInitTimeoutError(_("Connection attempt timed out"))
 
             for conn in init_timeout_conns:
                 self._connect_error(conn_error, conn)
@@ -1502,9 +1506,9 @@ class NetworkThread(Thread):
         while buffer_len >= msg_content_offset:
             msg_size, msg_type = DOUBLE_UINT32_UNPACK(in_buffer, idx)
 
-            if msg_size > self.MAX_INCOMING_MESSAGE_SIZE_LARGE:
+            if msg_size > self.MAX_INCOMING_MESSAGE_SIZE_448M:
                 log.add_conn("Received message larger than maximum size %s from server. "
-                             "Closing connection.", self.MAX_INCOMING_MESSAGE_SIZE_LARGE)
+                             "Closing connection.", self.MAX_INCOMING_MESSAGE_SIZE_448M)
                 self._manual_server_disconnect = True
                 self._close_connection(conn)
                 return
@@ -1709,9 +1713,9 @@ class NetworkThread(Thread):
         while buffer_len >= msg_content_offset and init is None:
             msg_size, = UINT32_UNPACK(in_buffer, idx)
 
-            if msg_size > self.MAX_INCOMING_MESSAGE_SIZE_SMALL:
+            if msg_size > self.MAX_INCOMING_MESSAGE_SIZE_16K:
                 log.add_conn("Received message larger than maximum size %s from peer %s. "
-                             "Closing connection.", (self.MAX_INCOMING_MESSAGE_SIZE_SMALL, conn.addr))
+                             "Closing connection.", (self.MAX_INCOMING_MESSAGE_SIZE_16K, conn.addr))
                 break
 
             msg_size_total = msg_size + 4
@@ -1875,14 +1879,20 @@ class NetworkThread(Thread):
         while buffer_len >= msg_content_offset:
             msg_size, msg_type = DOUBLE_UINT32_UNPACK(in_buffer, idx)
             msg_size_total = msg_size + 4
-            max_msg_size = self.MAX_INCOMING_MESSAGE_SIZE_MEDIUM
+            max_msg_size = self.MAX_INCOMING_MESSAGE_SIZE_1M
             msg_class = None
 
             if msg_type in PEER_MESSAGE_CLASSES:
                 msg_class = PEER_MESSAGE_CLASSES[msg_type]
 
-            if msg_class is SharedFileListResponse or msg_class is UserInfoResponse:
-                max_msg_size = self.MAX_INCOMING_MESSAGE_SIZE_LARGE
+            if msg_class is None or msg_class is FileSearchResponse or msg_class is FolderContentsResponse:
+                # Larger limit for unknown messages, since we don't want to close the connection
+                # if larger messages are added in the future.
+                max_msg_size = self.MAX_INCOMING_MESSAGE_SIZE_16M
+
+            elif msg_class is SharedFileListResponse or msg_class is UserInfoResponse:
+                # Larger limit since these responses can contain large file lists or user pictures
+                max_msg_size = self.MAX_INCOMING_MESSAGE_SIZE_448M
 
                 if conn.init.target_user not in self._allowed_message_responses[msg_class]:
                     # Since these responses tend to be large, close the connection when receiving
@@ -2500,9 +2510,9 @@ class NetworkThread(Thread):
         while buffer_len >= msg_content_offset:
             msg_size, = UINT32_UNPACK(in_buffer, idx)
 
-            if msg_size > self.MAX_INCOMING_MESSAGE_SIZE_SMALL:
+            if msg_size > self.MAX_INCOMING_MESSAGE_SIZE_16K:
                 log.add_conn("Received message larger than maximum size %s from user %s. "
-                             "Closing connection.", (self.MAX_INCOMING_MESSAGE_SIZE_SMALL, conn.init.target_user))
+                             "Closing connection.", (self.MAX_INCOMING_MESSAGE_SIZE_16K, conn.init.target_user))
                 self._close_connection(conn)
                 break
 

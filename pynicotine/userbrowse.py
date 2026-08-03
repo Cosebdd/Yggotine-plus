@@ -19,6 +19,7 @@ from pynicotine.slskmessages import RemoveAllowedResponse
 from pynicotine.slskmessages import SharedFileListRequest
 from pynicotine.slskmessages import SharedFileListResponse
 from pynicotine.slskmessages import UploadQueueNotification
+from pynicotine.slskmessages import UserStatus
 from pynicotine.utils import encode_path
 from pynicotine.utils import human_size
 from pynicotine.utils import humanize
@@ -137,6 +138,11 @@ class UserBrowse:
         core.users.watch_user(username, context="userbrowse")
 
     def request_user_shares(self, username):
+
+        if core.users.login_status == UserStatus.OFFLINE:
+            events.emit("shared-file-list-failed", username, is_offline=True)
+            return
+
         core.send_message_to_network_thread(AddAllowedResponse(SharedFileListResponse, username))
         core.send_message_to_peer(username, SharedFileListRequest())
 
@@ -224,10 +230,10 @@ class UserBrowse:
                 # Sanitization
                 for file_info in files:
                     if not isinstance(file_info[1], str):
-                        raise TypeError("Invalid file name")
+                        raise TypeError(_("Invalid file name in shares"))
 
                     if not isinstance(file_info[2], int):
-                        raise TypeError("Invalid file size")
+                        raise TypeError(_("Invalid file size in shares"))
 
                     attributes = file_info[4]
 
@@ -273,7 +279,7 @@ class UserBrowse:
                     file_info[4] = FileAttributes(bitrate, length, vbr, sample_rate, bit_depth)
 
         except Exception as error:
-            log.add(_("Loading Shares from disk failed: %(error)s"), {"error": error})
+            log.add(_("Loading shares from disk failed: %(error)s"), {"error": error})
             return
 
         username = os.path.basename(file_path)
@@ -402,7 +408,7 @@ class UserBrowse:
             return
 
         log.add(_("User %(user)s is sharing %(num_files)s files totaling %(shared_size)s across "
-                  "%(num_folders)s folders."), {
+                  "%(num_folders)s folders"), {
             "user": username,
             "num_files": humanize(browsed_user.num_files or 0),
             "shared_size": human_size(browsed_user.shared_size or 0),
@@ -426,7 +432,7 @@ class UserBrowse:
 
         self.browse_user(username, path=file_path)
 
-    def _peer_connection_error(self, username, conn_type, msgs, **_unused):
+    def _peer_connection_error(self, username, conn_type, msgs, is_offline=False):
 
         if not msgs:
             return
@@ -439,6 +445,7 @@ class UserBrowse:
         for msg in msgs:
             if msg.__class__ in failed_msg_types:
                 core.send_message_to_network_thread(RemoveAllowedResponse(SharedFileListResponse, username))
+                events.emit("shared-file-list-failed", username, is_offline)
                 break
 
     def _shared_file_list_response(self, msg):
