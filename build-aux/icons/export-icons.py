@@ -27,6 +27,15 @@ SCALES = (1, 2)
 # lossless here while being several times smaller than truecolour.
 MAX_COLOURS = 256
 
+# scour strips comments, which is where SVGs carry their SPDX tags, so the
+# header is put back afterwards to keep the tree REUSE compliant.
+LICENSE_HEADER = """<!--
+  SPDX-FileCopyrightText: 2010-2022 Nicotine+ Contributors
+  SPDX-FileCopyrightText: 2026 Yggotine+ Contributors
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+"""
+
 
 def master_for(size):
     """Small sizes have hand-tuned artwork with fewer details."""
@@ -60,6 +69,12 @@ def minify_svg(svg_path, dest_path):
          "-i", svg_path, "-o", dest_path],
         check=True
     )
+
+    with open(dest_path, encoding="utf-8") as file_handle:
+        data = file_handle.read()
+
+    with open(dest_path, "w", encoding="utf-8") as file_handle:
+        file_handle.write(LICENSE_HEADER + data)
 
 
 def export_application_icons():

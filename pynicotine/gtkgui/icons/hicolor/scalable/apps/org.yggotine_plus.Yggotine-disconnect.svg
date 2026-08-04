@@ -1,3 +1,8 @@
+<!--
+  SPDX-FileCopyrightText: 2010-2022 Nicotine+ Contributors
+  SPDX-FileCopyrightText: 2026 Yggotine+ Contributors
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
 <svg width="48" height="48" version="1.1" xmlns="http://www.w3.org/2000/svg">
  <path d="m39 2a9 9 0 0 0-9 9 9 9 0 0 0 9 9 9 9 0 0 0 9-9 9 9 0 0 0-9-9zm0 5a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4z" fill="#af1f2d"/>
  <path d="m39 0a9 9 0 0 0-9 9 9 9 0 0 0 9 9 9 9 0 0 0 9-9 9 9 0 0 0-9-9zm0 5a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4z" fill="#e15b68"/>
