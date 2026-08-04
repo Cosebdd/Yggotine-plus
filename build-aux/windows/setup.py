@@ -58,8 +58,10 @@ sys.path.insert(0, PROJECT_PATH)
 
 import pynicotine  # noqa: E402  # pylint: disable=import-error,wrong-import-position
 
-PACKAGE_NAME = "nicotine-plus"
-SCRIPT_NAME = "nicotine"
+PACKAGE_NAME = "yggotine-plus"
+SCRIPT_NAME = "yggotine"
+# Frozen bundles are self-contained, so unlike the wheel built by setup.py in the
+# project root, the module needs no rename to avoid colliding with nicotine-plus.
 MODULE_NAME = "pynicotine"
 FULL_NAME = f"{pynicotine.__application_name__}-{pynicotine.__version__}-{platform.machine().lower()}"
 MANIFEST_NAME = os.path.join(CURRENT_PATH, f"{SCRIPT_NAME}.manifest") if sys.platform == "win32" else None

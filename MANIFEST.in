@@ -5,6 +5,7 @@
 # https://packaging.python.org/en/latest/guides/using-manifest-in/
 
 include *.md
+include yggotine
 recursive-include data *.in
 recursive-include data *.py
 recursive-include doc *
@@ -12,6 +13,8 @@ recursive-include po *
 recursive-include pynicotine *
 
 exclude 404.md
+# Regenerated from pynicotine by setup.py, so shipping it would only go stale
+recursive-exclude build *
 recursive-exclude * *.appdata.xml
 recursive-exclude * *.dbn
 recursive-exclude * *.desktop

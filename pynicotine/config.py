@@ -57,6 +57,8 @@ class Config:
         - the data folder
         """
 
+        folder_name = "yggotine"
+
         script_folder_path = os.path.dirname(sys.argv[0])
         portable_folder_path = os.path.join(script_folder_path, "portable")
 
@@ -69,11 +71,11 @@ class Config:
 
         if sys.platform == "win32":
             appdata_folder_path = os.environ.get("APPDATA", os.path.join(home, "AppData", "Roaming"))
-            data_folder_path = os.path.join(os.path.normpath(appdata_folder_path), "nicotine")
+            data_folder_path = os.path.join(os.path.normpath(appdata_folder_path), folder_name)
             config_folder_path = os.path.join(data_folder_path, "config")
             return config_folder_path, data_folder_path
 
-        legacy_folder_path = os.path.join(home, ".nicotine")
+        legacy_folder_path = os.path.join(home, f".{folder_name}")
 
         if os.path.isdir(encode_path(legacy_folder_path)):
             return legacy_folder_path, legacy_folder_path
@@ -82,7 +84,7 @@ class Config:
             path = os.environ.get(xdg)
             path = path.split(":")[0] if path else default
 
-            return os.path.join(path, "nicotine")
+            return os.path.join(path, folder_name)
 
         config_folder_path = xdg_path("XDG_CONFIG_HOME", os.path.join(home, ".config"))
         data_folder_path = xdg_path("XDG_DATA_HOME", os.path.join(home, ".local", "share"))

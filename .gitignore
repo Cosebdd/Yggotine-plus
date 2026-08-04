@@ -36,10 +36,17 @@ build/
 dist/
 debian/files
 nicotine_plus.egg-info/
+yggotine_plus.egg-info/
 build-aux/flatpak/build-dir/
 build-aux/flatpak/.flatpak-builder/
 build-aux/macos/build/
 build-aux/windows/build/
+build-aux/arch/src/
+build-aux/arch/pkg/
+*.pkg.tar.zst
 
 # Ignore portable files
 portable/
+
+# Ignore IDE files
+.idea/

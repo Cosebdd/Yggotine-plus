@@ -3,7 +3,7 @@
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "50",
     "sdk" : "org.gnome.Sdk",
-    "command" : "nicotine",
+    "command" : "yggotine",
     "separate-locales" : false,
     "finish-args" : [
         "--socket=wayland",
@@ -22,7 +22,7 @@
     ],
     "modules" : [
         {
-            "name" : "nicotine-plus",
+            "name" : "yggotine-plus",
             "buildsystem" : "simple",
             "build-commands" : [
                 "pip3 install --no-build-isolation --no-deps --prefix=${FLATPAK_DEST} ."

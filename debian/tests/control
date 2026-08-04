@@ -4,7 +4,7 @@
 ## DEP-8 continuous integration tests.
 
 # Verify that package is installed...
-Test-Command: nicotine --version | grep Nicotine+
+Test-Command: yggotine --version | grep Yggotine+
 Depends: @
 
 # Perform integration and unit tests...

@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2023-2025 Nicotine+ Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-name: nicotine-plus
-adopt-info: nicotine-plus
+name: yggotine-plus
+adopt-info: yggotine-plus
 license: GPL-3.0-or-later
 
 base: core24
@@ -16,7 +16,7 @@ plugs:
     private: true
 
 apps:
-  nicotine-plus:
+  yggotine-plus:
     command: bin/yggotine
     common-id: org.yggotine_plus.Yggotine
     desktop: share/applications/org.yggotine_plus.Yggotine.desktop
@@ -30,7 +30,7 @@ apps:
       - unity7
 
 parts:
-  nicotine-plus:
+  yggotine-plus:
     plugin: python
     source: .
     python-packages: []
@@ -47,7 +47,7 @@ parts:
       done
 
 slots:
-  nicotine-plus:
+  yggotine-plus:
     interface: dbus
     bus: session
     name: org.yggotine_plus.Yggotine
