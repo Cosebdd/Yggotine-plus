@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 Yggotine+ Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Builds a package from the working tree, uncommitted changes included.
+# Run makepkg from this directory, with -f to rebuild an existing package.
+
+pkgname=yggotine-plus
+pkgver=3.4.0.dev1
+pkgrel=1
+pkgdesc="Soulseek client supporting only IPv6, forked from Nicotine+"
+arch=('any')
+url="https://github.com/Cosebdd/Yggotine-plus"
+license=('GPL-3.0-or-later')
+depends=('gdk-pixbuf2' 'glib2' 'gobject-introspection-runtime' 'gtk4' 'pango'
+         'python' 'python-gobject')
+optdepends=('gspell: spell checking in chat')
+makedepends=('gettext' 'python-build' 'python-installer' 'python-setuptools'
+             'python-wheel')
+source=()
+
+prepare() {
+    rm -rf "$srcdir/tree"
+    mkdir -p "$srcdir/tree"
+
+    # makepkg works inside the repository, so the copy has to exclude its own
+    # output directories or it recurses into itself.
+    tar -c -C "$startdir/../.." \
+        --exclude=./.git --exclude=./build --exclude=./dist \
+        --exclude=./build-aux/arch/src --exclude=./build-aux/arch/pkg . \
+        | tar -x -C "$srcdir/tree"
+}
+
+build() {
+    cd "$srcdir/tree"
+    python -m build --wheel --no-isolation --outdir "$srcdir/dist"
+}
+
+package() {
+    python -m installer --destdir="$pkgdir" "$srcdir/dist/"*.whl
+}

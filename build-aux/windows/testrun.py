@@ -9,14 +9,20 @@ import sys
 
 MIN_MACOS_VERSION = (11, 0)
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
+PROJECT_PATH = os.path.abspath(os.path.join(CURRENT_PATH, "..", ".."))
+sys.path.insert(0, PROJECT_PATH)
+
+import pynicotine  # noqa: E402  # pylint: disable=import-error,wrong-import-position
+
+APPLICATION_NAME = pynicotine.__application_name__
 
 if sys.platform == "win32":
     EXECUTABLE_PATH = os.path.join(
-        CURRENT_PATH, "build", "package", "Nicotine+", "Nicotine+-debug.exe"
+        CURRENT_PATH, "build", "package", APPLICATION_NAME, f"{APPLICATION_NAME}-debug.exe"
     )
 elif sys.platform == "darwin":
     EXECUTABLE_PATH = os.path.join(
-        CURRENT_PATH, "build", "dist", "Nicotine+.app", "Contents", "MacOS", "Nicotine+-debug"
+        CURRENT_PATH, "build", "dist", f"{APPLICATION_NAME}.app", "Contents", "MacOS", f"{APPLICATION_NAME}-debug"
     )
 else:
     EXECUTABLE_PATH = next(glob.iglob(os.path.join(CURRENT_PATH, "build", "*.AppImage")))

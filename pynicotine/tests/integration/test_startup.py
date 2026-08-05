@@ -9,6 +9,8 @@ import sys
 from unittest import skipIf
 from unittest import TestCase
 
+from pynicotine import __application_name__
+
 DATA_FOLDER_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "temp_data")
 CONFIG_FILE = os.path.join(DATA_FOLDER_PATH, "temp_config")
 
@@ -95,4 +97,4 @@ class StartupTest(TestCase):
         self.assertIn(b" 0 ", output)
 
         output = subprocess.check_output([sys.executable, "-m", "pynicotine", "--version"], timeout=3)
-        self.assertIn(b"Nicotine+", output)
+        self.assertIn(__application_name__.encode(), output)

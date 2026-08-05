@@ -1,2 +1,2 @@
 version=4
-https://pypi.debian.net/nicotine-plus/nicotine-plus-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))
+https://pypi.debian.net/yggotine-plus/yggotine[-_]plus-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))
