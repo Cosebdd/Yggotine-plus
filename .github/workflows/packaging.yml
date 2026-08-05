@@ -89,11 +89,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate manifest
-        run: flatpak-builder-lint --exceptions manifest build-aux/flatpak/org.yggotine_plus.Yggotine.json
-
-      - name: Validate appstream
-        run: flatpak-builder-lint appstream data/org.yggotine_plus.Yggotine.appdata.xml.in
+      # flatpak-builder-lint enforces Flathub submission rules, which this fork
+      # does not meet: the app ID has no matching domain, and --filesystem=home
+      # needs a per-app exception granted at review. Restore both steps if the
+      # fork is ever submitted to Flathub.
 
       - name: Build Flatpak package
         run: |
